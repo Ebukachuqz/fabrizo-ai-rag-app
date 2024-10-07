@@ -1,3 +1,13 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+db.sqlite3
+scraped_tweets.csv
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

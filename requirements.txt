@@ -1,0 +1,8 @@
+streamlit
+langchain
+lancedb
+mistralai
+sentence-transformers
+python-dotenv
+groq
+langchain-huggingface

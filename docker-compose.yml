@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: rag_app
+    ports:
+      - "8501:8501"
+    environment:
+      - LANCEDB_PATH=/app/data/lancedb
+      - LANCEDB_TABLE=tweets
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - MONGO_DB_URL=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+volumes:
+  mongo_data:
