@@ -6,3 +6,4 @@ sentence-transformers
 python-dotenv
 groq
 langchain-huggingface
+pymongo
