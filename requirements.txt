@@ -5,5 +5,5 @@ mistralai
 sentence-transformers
 python-dotenv
 groq
-langchain-huggingface
+# langchain-huggingface
 pymongo
