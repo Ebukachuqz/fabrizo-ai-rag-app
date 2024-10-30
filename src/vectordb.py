@@ -18,7 +18,8 @@ def lancedb_hybrid_search(query, k=5):
     
     results = table.search(query, query_type="hybrid").rerank(reranker=ce_reranker).limit(k).to_list()
 
-    context = [result['text'] for result in results]
+    # Format context to include both text and created_at date
+    context = [f"On {result['created_at']}, Fabrizio Romano tweeted: {result['text']}" for result in results]
     urls = [result['url'] for result in results]
     
     return context, urls
