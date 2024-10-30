@@ -7,7 +7,7 @@ import time
 
 st.title("Fabrizo Romano Q&A Chatbot")
 
-with st.spinner("Setting up the database..."):
+with st.spinner("Setting up the database. This may take 3-6 minutes..."):
     initialize_database()
 
 if "chat_history" not in st.session_state:
