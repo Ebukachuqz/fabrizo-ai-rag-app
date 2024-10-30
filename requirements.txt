@@ -8,3 +8,4 @@ groq
 langchain-huggingface
 langchain-groq
 pymongo
+tantivy
