@@ -4,10 +4,11 @@ from init_lancedb import initialize_database
 from src.rag import rag
 from src.feedback import store_feedback
 import time
+import re
 
 st.image("header.jpeg", use_column_width=True)
 
-st.title("Fabrizo Romano Q&A Chatbot")
+st.title("Fabrizio Romano Q&A AI Chatbot")
 
 # Set up LLM choice
 llm_options = ["Groq", "OpenAI"]
@@ -69,7 +70,13 @@ if user_query:
             st.session_state.feedback_ready = True
 
         except Exception as e:
-            st.error(f"Error generating response: {str(e)}")
+            error_str = str(e)
+            match = re.search(r"'message':\s'(.+?)'", error_str)
+            if match:
+                error_message = match.group(1)
+                st.error(error_message)
+            else:
+                st.error(str(e))
 
 # Feedback section
 if st.session_state.feedback_ready:
