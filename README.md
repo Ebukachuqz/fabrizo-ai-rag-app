@@ -1,10 +1,18 @@
-# Evaluation of Q&A System using Fabrizio Romano's Tweets
+<div align="center">
+  
+# Fabrizio Romano AI Chatbot
+
+<img src="/AI%20image.webp" alt="Chatbot Image" width="200" />
+
+</div>
+
+#### Evaluation of Q&A System using Fabrizio Romano's Tweets
 
 Evaluations can be found in [The Jupyter Notebook](./notebooks/main.ipynb)
 
 ## Problem Description
 
-The project is a question-answering (Q&A) system using Fabrizio Romano's tweets, allowing users to ask football-related questions and retrieve relevant tweets to provide answers using a language model (LLM). The project solves the problem of retrieving football information from a specific dataset of scraped tweets.
+The project is a question-answering (Q&A) system using Fabrizio Romano's tweets, allowing users to ask football-related questions and retrieve relevant tweets to provide answers using a language model (LLM). The project solves the problem of retrieving football information from a specific dataset of scraped tweets. **The tweets were scraped by me from twitter**
 
 ### RAG Flow
 
@@ -58,13 +66,10 @@ Hybrid search is implemented using LanceDB's combination of text and vector sear
 **Document Re-ranking**:    
 Document re-ranking is implemented using various rerankers, including CrossEncoder, Cohere, and RRF rerankers.
 
-
-## Bonus Points
-
 **Deployment to the cloud**:  
--
+- [Live Demo on Streamlit](https://fabrizo-ai-rag-app.streamlit.app/)
 
-## Reproducibility
+### Reproducibility
 
 #### Running the Application with Docker
 
@@ -72,7 +77,9 @@ To run the entire app (Streamlit + MongoDB + LanceDB setup) using Docker, follow
 
 ### Prerequisites
 
-- Make sure Docker and Docker Compose are installed on your system.
+Ensure you have Docker and Docker Compose installed:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Steps
 
@@ -164,23 +171,34 @@ If you want to run the app directly without Docker, follow these steps:
    MONGO_DB_URL=mongodb://localhost:27017  # or your remote MongoDB URL
    ```
 
-5. Initialize LanceDB by running the `init_lancedb.py` script:
-
-   ```bash
-   python init_lancedb.py
-   ```
-
-6. Start the Streamlit app:
+5. Start the Streamlit app:
 
    ```bash
    streamlit run app.py
    ```
 
-7. Open your browser and go to `http://localhost:8501` to interact with the application.
+6. Open your browser and go to `http://localhost:8501` to interact with the application.
 
 ### Storing Feedback
 
 To store feedback, make sure MongoDB is running locally or you are connected to a remote MongoDB instance.
+
+### Monitoring and Observability
+
+[OpenLIT](https://docs.openlit.io/) was used to seamlessly monitor and observe the LLMs operations of the app. It integrates with OpenTelemetry to provide monitoring for LangChain and other LLM frameworks. Refer to [OpenLIT's docs](https://docs.openlit.io/latest/integrations/langchain) for setup
+
+### Screenshots
+
+<p align="center">
+  <img src="./screenshots/screenshot1.png" alt="1" width="45%">
+  <img src="./screenshots/screenshot 2.png" alt="2" width="45%">
+</p>
+
+
+<p align="center">
+  <img src="./screenshots/screenshot3.png" alt="3" width="45%">
+  <img src="./screenshots/screenshot4.png" alt="4" width="45%">
+</p>
 
 ### Troubleshooting
 
