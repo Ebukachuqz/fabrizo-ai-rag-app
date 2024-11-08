@@ -10,3 +10,4 @@ langchain-groq
 langchain-openai
 pymongo
 tantivy
+openlit==1.27.1

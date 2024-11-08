@@ -183,6 +183,23 @@ If you want to run the app directly without Docker, follow these steps:
 
 To store feedback, make sure MongoDB is running locally or you are connected to a remote MongoDB instance.
 
+### Monitoring and Observability
+
+[OpenLIT](https://docs.openlit.io/) was used to seamlessly monitor and observe the LLMs operations of the app. It integrates with OpenTelemetry to provide monitoring for LangChain and other LLM frameworks. Refer to [OpenLIT's docs](https://docs.openlit.io/latest/integrations/langchain) for setup
+
+### Screenshots
+
+<p align="center">
+  <img src="./screenshots/screenshot1.png" alt="1" width="45%">
+  <img src="./screenshots/screenshot 2.png" alt="2" width="45%">
+</p>
+
+
+<p align="center">
+  <img src="./screenshots/screenshot3.png" alt="3" width="45%">
+  <img src="./screenshots/screenshot4.png" alt="4" width="45%">
+</p>
+
 ### Troubleshooting
 
 If you encounter any issues, make sure all dependencies are installed correctly and environment variables are properly configured.
