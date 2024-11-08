@@ -1,10 +1,18 @@
-# Evaluation of Q&A System using Fabrizio Romano's Tweets
+<div align="center">
+  
+# Fabrizio Romano AI Chatbot
+
+<img src="/AI%20image.webp" alt="Chatbot Image" width="200" />
+
+</div>
+
+#### Evaluation of Q&A System using Fabrizio Romano's Tweets
 
 Evaluations can be found in [The Jupyter Notebook](./notebooks/main.ipynb)
 
 ## Problem Description
 
-The project is a question-answering (Q&A) system using Fabrizio Romano's tweets, allowing users to ask football-related questions and retrieve relevant tweets to provide answers using a language model (LLM). The project solves the problem of retrieving football information from a specific dataset of scraped tweets.
+The project is a question-answering (Q&A) system using Fabrizio Romano's tweets, allowing users to ask football-related questions and retrieve relevant tweets to provide answers using a language model (LLM). The project solves the problem of retrieving football information from a specific dataset of scraped tweets. **The tweets were scraped by me from twitter**
 
 ### RAG Flow
 
