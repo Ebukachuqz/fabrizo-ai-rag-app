@@ -69,7 +69,9 @@ To run the entire app (Streamlit + MongoDB + LanceDB setup) using Docker, follow
 
 ### Prerequisites
 
-- Make sure Docker and Docker Compose are installed on your system.
+Ensure you have Docker and Docker Compose installed:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
 ### Steps
 
