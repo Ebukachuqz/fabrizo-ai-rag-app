@@ -11,6 +11,8 @@ services:
       - LANCEDB_TABLE=tweets
       - GROQ_API_KEY=${GROQ_API_KEY}
       - MONGO_DB_URL=mongodb://mongodb:27017
+    volumes:
+      - lancedb_data:/app/data/lancedb
     depends_on:
       - mongodb
 
@@ -24,3 +26,4 @@ services:
 
 volumes:
   mongo_data:
+  lancedb_data:

@@ -58,13 +58,10 @@ Hybrid search is implemented using LanceDB's combination of text and vector sear
 **Document Re-ranking**:    
 Document re-ranking is implemented using various rerankers, including CrossEncoder, Cohere, and RRF rerankers.
 
-
-## Bonus Points
-
 **Deployment to the cloud**:  
--
+- [Live Demo on Streamlit](https://fabrizo-ai-rag-app.streamlit.app/)
 
-## Reproducibility
+### Reproducibility
 
 #### Running the Application with Docker
 
@@ -164,19 +161,13 @@ If you want to run the app directly without Docker, follow these steps:
    MONGO_DB_URL=mongodb://localhost:27017  # or your remote MongoDB URL
    ```
 
-5. Initialize LanceDB by running the `init_lancedb.py` script:
-
-   ```bash
-   python init_lancedb.py
-   ```
-
-6. Start the Streamlit app:
+5. Start the Streamlit app:
 
    ```bash
    streamlit run app.py
    ```
 
-7. Open your browser and go to `http://localhost:8501` to interact with the application.
+6. Open your browser and go to `http://localhost:8501` to interact with the application.
 
 ### Storing Feedback
 
