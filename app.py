@@ -3,11 +3,15 @@ from langchain_core.messages import AIMessage, HumanMessage
 from init_lancedb import initialize_database
 from src.rag import rag
 from src.feedback import store_feedback
+from src.text2speech import text2speech
+from utils.remove_emojis import remove_emojis
 import time
 import re
+from utils.autoplay_audio import autoplay_audio
+
+audio_filename = "response.mp3"
 
 st.image("header.jpeg", use_column_width=True)
-
 st.title("Fabrizio Romano Q&A AI Chatbot")
 
 # Set up LLM choice
@@ -49,22 +53,23 @@ if user_query:
 
         try:
             with st.spinner("Generating response..."):
-                response_stream, urls = rag(user_query, llm_choice, api_key)
-                
-            # Handle response or display error notification
-            if urls is None:  # An error occurred during RAG
-                st.error(response_stream)
-            else:
-                for chunk in response_stream:
-                    response_text += chunk
-                    response_container.write(response_text)
-                    time.sleep(0.03)
+                full_response, chunks, urls = rag(user_query, llm_choice, api_key)
 
-                # Display references if any
-                if urls:
-                    references_text = "\n\n##### References:\n" + "\n".join(f"- [Tweet]({url})" for url in urls[:3])
-                    response_text += references_text  
-                    response_container.write(response_text) 
+            with st.spinner("Generating audio..."):
+                audio_file = text2speech(remove_emojis(full_response), filename=audio_filename)
+            if audio_file:
+                autoplay_audio(audio_filename)
+
+            for chunk in chunks:
+                response_text += chunk
+                response_container.write(response_text)
+                time.sleep(0.1)
+
+            # Display references if any
+            if urls:
+                references_text = "\n\n##### References:\n" + "\n".join(f"- [Tweet]({url})" for url in urls[:3])
+                response_text += references_text  
+                response_container.write(response_text) 
 
             st.session_state.chat_history.append(AIMessage(content=response_text))
             st.session_state.feedback_ready = True
