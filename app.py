@@ -4,12 +4,20 @@ from init_lancedb import initialize_database
 from src.rag import rag
 from src.feedback import store_feedback
 from src.text2speech import text2speech
+from src.speech2text import speech2text
 from utils.remove_emojis import remove_emojis
 import time
 import re
 from utils.autoplay_audio import autoplay_audio
+from audiorecorder import audiorecorder
+from streamlit_float import *
+import os
 
-audio_filename = "response.mp3"
+# Float feature initialization
+float_init()
+
+audio_response = "audio_response.mp3"
+audio_query = "audio_query.wav"
 
 st.image("header.jpeg", use_column_width=True)
 st.title("Fabrizio Romano Q&A AI Chatbot")
@@ -41,11 +49,31 @@ for message in st.session_state.chat_history:
 
 user_query = st.chat_input("Ask a question...")
 
+footer_container = st.container()
+
+with footer_container:
+    audio = audiorecorder(start_prompt="", stop_prompt="", pause_prompt="", show_visualizer=False, key=None)
+
+
 # Process user query
-if user_query:
-    st.session_state.chat_history.append(HumanMessage(content=user_query))
-    with st.chat_message("Human"):
-        st.markdown(user_query)
+if user_query or len(audio) > 0:
+    if len(audio) > 0:
+        audio.export(audio_query, format="wav")
+        with st.chat_message("Human"):
+            with st.spinner("Transcribing audio..."):
+                transcribed_text = speech2text(audio_query)
+            st.session_state.chat_history.append(HumanMessage(content=transcribed_text))
+            autoplay_audio(audio_query) 
+            st.markdown(transcribed_text)
+            user_query = transcribed_text
+            os.remove(audio_query)
+        
+    elif user_query:
+        st.session_state.chat_history.append(HumanMessage(content=user_query))
+        with st.chat_message("Human"):
+            st.markdown(user_query)
+    else:
+        st.stop()
 
     with st.chat_message("AI"):
         response_container = st.empty()
@@ -56,9 +84,9 @@ if user_query:
                 full_response, chunks, urls = rag(user_query, llm_choice, api_key)
 
             with st.spinner("Generating audio..."):
-                audio_file = text2speech(remove_emojis(full_response), filename=audio_filename)
+                audio_file = text2speech(remove_emojis(full_response), filename=audio_response)
             if audio_file:
-                autoplay_audio(audio_filename)
+                autoplay_audio(audio_response)
 
             for chunk in chunks:
                 response_text += chunk
@@ -83,15 +111,17 @@ if user_query:
             else:
                 st.error(str(e))
 
-# Feedback section
-if st.session_state.feedback_ready:
-    rating = st.slider("Rate the response (1-5):", 1, 5)
-    if st.button("Submit Feedback"):
-        with st.spinner("Submitting feedback..."):
-            try:
-                latest_response = st.session_state.chat_history[-1].content
-                store_feedback(user_query, latest_response, rating)
-                st.write("Thank you for your feedback!")
-                st.session_state.feedback_ready = False
-            except Exception as e:
-                st.error(f"Error submitting feedback: {str(e)}")
+    # Feedback section
+    if st.session_state.feedback_ready:
+        rating = st.slider("Rate the response (1-5):", 1, 5)
+        if st.button("Submit Feedback"):
+            with st.spinner("Submitting feedback..."):
+                try:
+                    latest_response = st.session_state.chat_history[-1].content
+                    store_feedback(user_query, latest_response, rating)
+                    st.write("Thank you for your feedback!")
+                    st.session_state.feedback_ready = False
+                except Exception as e:
+                    st.error(f"Error submitting feedback: {str(e)}")
+
+recorder_css = float_css_helper(width="3rem", right="22rem", bottom="6.5rem", transition=0)
