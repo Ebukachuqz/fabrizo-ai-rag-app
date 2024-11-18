@@ -39,6 +39,9 @@ if "chat_history" not in st.session_state:
         AIMessage(content="Hello, I am a Fabrizo Romano AI bot. Ask me any transfer/football questions Fabrizo has tweeted about. From Jul 25 2024 to Sep 07 2024"),
     ]
 
+if "audio_bytes" not in st.session_state:
+    st.session_state.audio_bytes = None
+
 if "feedback_ready" not in st.session_state:
     st.session_state.feedback_ready = False
 
@@ -52,12 +55,24 @@ user_query = st.chat_input("Ask a question...")
 footer_container = st.container()
 
 with footer_container:
-    audio = audiorecorder(start_prompt="", stop_prompt="", pause_prompt="", show_visualizer=False, key=None)
+    audio = audiorecorder(start_prompt="", stop_prompt="", pause_prompt="", show_visualizer=False)
 
+def check_new_audio():
+    global audio
 
-# Process user query
-if user_query or len(audio) > 0:
-    if len(audio) > 0:
+    if len(audio) == 0:
+        return False
+
+    if audio == st.session_state.audio_bytes:
+        return False
+    else:
+        st.session_state.audio_bytes = audio
+        return True
+
+# Process user input
+is_new_audio = check_new_audio()
+if user_query or is_new_audio:
+    if is_new_audio:
         audio.export(audio_query, format="wav")
         with st.chat_message("Human"):
             with st.spinner("Transcribing audio..."):
