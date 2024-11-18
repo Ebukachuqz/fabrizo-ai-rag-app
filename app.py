@@ -9,12 +9,34 @@ from utils.remove_emojis import remove_emojis
 import time
 import re
 from utils.autoplay_audio import autoplay_audio
+from utils.get_ratings_from_emoji import get_rating_from_emoji
 from audiorecorder import audiorecorder
 from streamlit_float import *
 import os
+from streamlit_feedback import streamlit_feedback
 
 # Float feature initialization
 float_init()
+
+def feedback_cb():
+    feedback = st.session_state.fb_k
+    if feedback:
+        rating = get_rating_from_emoji(feedback['score'])
+        latest_human_query = st.session_state.chat_history[-2].content
+        latest_ai_response = st.session_state.chat_history[-1].content
+
+        # Store feedback status with the corresponding AI response
+        st.session_state.feedback_status[latest_ai_response] = {
+            'rating': rating,
+            'emoji': feedback['score']
+        }
+        
+        try:
+            store_feedback(latest_human_query, latest_ai_response, rating)
+            st.toast("Thank you for your feedback!", icon="✨")
+        except Exception as e:
+            st.toast("Error saving feedback", icon="🚨")
+            print(f"Error storing feedback: {str(e)}")
 
 audio_response = "audio_response.mp3"
 audio_query = "audio_query.wav"
@@ -42,13 +64,18 @@ if "chat_history" not in st.session_state:
 if "audio_bytes" not in st.session_state:
     st.session_state.audio_bytes = None
 
-if "feedback_ready" not in st.session_state:
-    st.session_state.feedback_ready = False
+if "feedback_status" not in st.session_state:
+    st.session_state.feedback_status = {}
 
 # Display conversation history
 for message in st.session_state.chat_history:
     with st.chat_message("AI" if isinstance(message, AIMessage) else "Human"):
         st.write(message.content)
+
+        if isinstance(message, AIMessage):
+            feedback = st.session_state.feedback_status.get(message.content)
+            if feedback:
+                st.markdown(f"**_Rating:_** {feedback['emoji']}")
 
 user_query = st.chat_input("Ask a question...")
 
@@ -115,7 +142,10 @@ if user_query or is_new_audio:
                 response_container.write(response_text) 
 
             st.session_state.chat_history.append(AIMessage(content=response_text))
-            st.session_state.feedback_ready = True
+
+            with st.form('form'):
+                streamlit_feedback(feedback_type="faces", align="flex-start", key='fb_k')
+                st.form_submit_button('Submit feedback', on_click=feedback_cb)
 
         except Exception as e:
             error_str = str(e)
@@ -125,18 +155,3 @@ if user_query or is_new_audio:
                 st.error(error_message)
             else:
                 st.error(str(e))
-
-    # Feedback section
-    if st.session_state.feedback_ready:
-        rating = st.slider("Rate the response (1-5):", 1, 5)
-        if st.button("Submit Feedback"):
-            with st.spinner("Submitting feedback..."):
-                try:
-                    latest_response = st.session_state.chat_history[-1].content
-                    store_feedback(user_query, latest_response, rating)
-                    st.write("Thank you for your feedback!")
-                    st.session_state.feedback_ready = False
-                except Exception as e:
-                    st.error(f"Error submitting feedback: {str(e)}")
-
-recorder_css = float_css_helper(width="3rem", right="22rem", bottom="6.5rem", transition=0)

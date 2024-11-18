@@ -13,3 +13,4 @@ tantivy
 openlit==1.27.1
 deepgram-sdk
 streamlit-audiorecorder
+streamlit_feedback
