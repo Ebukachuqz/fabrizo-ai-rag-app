@@ -99,17 +99,27 @@ def check_new_audio():
 # Process user input
 is_new_audio = check_new_audio()
 if user_query or is_new_audio:
+    if os.path.exists(audio_response):
+        os.remove(audio_response)
     if is_new_audio:
         audio.export(audio_query, format="wav")
         with st.chat_message("Human"):
-            with st.spinner("Transcribing audio..."):
-                transcribed_text = speech2text(audio_query)
-            st.session_state.chat_history.append(HumanMessage(content=transcribed_text))
-            autoplay_audio(audio_query) 
-            st.markdown(transcribed_text)
-            user_query = transcribed_text
-            os.remove(audio_query)
-        
+            try:
+                with st.spinner("Transcribing audio..."):
+                    transcribed_text = speech2text(audio_query)
+                    if not transcribed_text or transcribed_text.strip() == "":
+                        raise ValueError("No text transcribed")
+                    
+                    st.session_state.chat_history.append(HumanMessage(content=transcribed_text))
+                    autoplay_audio(audio_query) 
+                    st.markdown(transcribed_text)
+                    user_query = transcribed_text
+            except Exception as e:
+                st.error("Failed to transcribe audio. Please rerecord.")
+                st.stop()
+            finally:
+                os.remove(audio_query)
+                    
     elif user_query:
         st.session_state.chat_history.append(HumanMessage(content=user_query))
         with st.chat_message("Human"):
