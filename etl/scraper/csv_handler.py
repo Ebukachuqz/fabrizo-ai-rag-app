@@ -6,7 +6,9 @@ from models import Tweet
 
 def initialize_csv(csv_filename: str) -> None:
     """Create CSV file with headers if it doesn't exist"""
+    print("In initialize_csv")
     if not os.path.exists(csv_filename):
+        print(f'{csv_filename} does not exist. Creating it now...')
         os.makedirs(os.path.dirname(csv_filename), exist_ok=True)
         with open(csv_filename, 'w', newline='') as file:
             writer = csv.writer(file)
