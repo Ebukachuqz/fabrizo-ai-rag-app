@@ -5,11 +5,12 @@ from csv_handler import initialize_csv, update_csv
 from scraper import fetch_tweets
 
 async def main():
-    CSV_FILENAME = "../../data/fabrizioromano_tweets.csv"
+    CSV_FILENAME = os.path.join(os.getcwd(), "data", "fabrizioromano_tweets.csv")
 
     current_date = datetime.now().strftime("%Y-%m-%d")
     QUERY = f'(from:FabrizioRomano) lang:en until:{current_date} -filter:replies'
 
+    print(CSV_FILENAME)
     return initialize_csv(CSV_FILENAME)
 
     try:
