@@ -10,8 +10,7 @@ async def main():
     current_date = datetime.now().strftime("%Y-%m-%d")
     QUERY = f'(from:FabrizioRomano) lang:en until:{current_date} since:2024-09-08 -filter:replies'
 
-    print(CSV_FILENAME)
-    return initialize_csv(CSV_FILENAME)
+    initialize_csv(CSV_FILENAME)
 
     try:
         new_tweets = await fetch_tweets(QUERY, CSV_FILENAME)
