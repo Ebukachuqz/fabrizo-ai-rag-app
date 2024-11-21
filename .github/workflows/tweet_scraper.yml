@@ -1,0 +1,52 @@
+name: Tweet Scraper
+
+on:
+  schedule:
+    # Run every day at 12:00 AM UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r ./etl/scraper/requirements.txt
+
+      - name: Run scraper
+        env:
+          EDITCOOKIE_JSON: ${{ secrets.EDITCOOKIE_JSON }}
+        run: |
+          source .venv/bin/activate
+          python ./etl/scraper/main.py
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git config user.name 'github-actions'
+          git config user.email 'github-actions@github.com'
+          git add ./data/fabrizioromano_tweets.csv
+          git diff --staged --quiet || echo "changes=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if changes exist
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          timestamp=$(date -u)
+          git commit -m "Update tweets data - ${timestamp}"
+          git push
