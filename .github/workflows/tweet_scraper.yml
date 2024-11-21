@@ -41,7 +41,7 @@ jobs:
         run: |
           git config user.name 'github-actions'
           git config user.email 'github-actions@github.com'
-          git add .
+          git add ./data/fabrizioromano_tweets.csv
           git diff --staged --quiet || echo "changes=true" >> $GITHUB_OUTPUT
 
       - name: Commit and push if changes exist

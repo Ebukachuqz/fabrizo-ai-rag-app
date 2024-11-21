@@ -23,7 +23,7 @@ async def fetch_tweets(query: str, csv_filename: str, max_retries: int = 3, retr
                 print(f"{datetime.now()} - Fetching initial tweets...")
                 tweets = await client.search_tweet(query=query, product='Latest')
             else:
-                wait_time = randint(9, 13)
+                wait_time = randint(14, 23)
                 print(f"{datetime.now()} - Fetching next batch after {wait_time} seconds...")
                 await asyncio.sleep(wait_time)
                 tweets = await tweets.next()

@@ -6,7 +6,9 @@ from models import Tweet
 
 def initialize_csv(csv_filename: str) -> None:
     """Create CSV file with headers if it doesn't exist"""
+    print("In initialize_csv")
     if not os.path.exists(csv_filename):
+        print(f'{csv_filename} does not exist. Creating it now...')
         os.makedirs(os.path.dirname(csv_filename), exist_ok=True)
         with open(csv_filename, 'w', newline='') as file:
             writer = csv.writer(file)
@@ -21,32 +23,35 @@ def get_first_tweet_id(csv_filename: str) -> Optional[str]:
         return None
 
 def update_csv(csv_filename: str, new_tweets: List[Tweet]) -> None:
-    """Update CSV with new tweets"""
+    """Update CSV with new tweets at the start, recalculating serial numbers."""
     if not new_tweets:
         return
 
     try:
         with open(csv_filename, 'r') as file:
-            existing_data = file.readlines()
+            existing_data = list(csv.reader(file))
     except FileNotFoundError:
         existing_data = []
 
+    header = existing_data[0] if existing_data else ['tweet_count', 'tweet_id', 'username', 'text', 'created_at', 'url']
+    existing_data = existing_data[1:] if existing_data else []
+
+    all_data = [
+        [
+            index + 1,  # reassign serial number
+            tweet.tweet_id,
+            tweet.username,
+            tweet.text,
+            tweet.created_at,
+            tweet.url
+        ]
+        for index, tweet in enumerate(
+            new_tweets + [Tweet(*row) for row in existing_data] 
+        )
+    ]
+
+    # Write everything back to the file
     with open(csv_filename, 'w', newline='') as file:
         writer = csv.writer(file)
-        if existing_data:
-            writer.writerow(existing_data[0].strip().split(','))
-        else:
-            writer.writerow(['tweet_count', 'tweet_id', 'username', 'text', 'created_at', 'url'])
-
-        for tweet in new_tweets:
-            writer.writerow([
-                tweet.tweet_count,
-                tweet.tweet_id,
-                tweet.username,
-                tweet.text,
-                tweet.created_at,
-                tweet.url
-            ])
-
-        if existing_data:
-            file.writelines(existing_data[1:])
+        writer.writerow(header)
+        writer.writerows(all_data)
