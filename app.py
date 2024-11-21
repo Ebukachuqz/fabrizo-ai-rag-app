@@ -10,7 +10,6 @@ import time
 import re
 from utils.autoplay_audio import autoplay_audio
 from utils.get_ratings_from_emoji import get_rating_from_emoji
-from audiorecorder import audiorecorder
 import os
 from streamlit_feedback import streamlit_feedback
 
