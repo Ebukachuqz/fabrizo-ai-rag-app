@@ -11,12 +11,8 @@ import re
 from utils.autoplay_audio import autoplay_audio
 from utils.get_ratings_from_emoji import get_rating_from_emoji
 from audiorecorder import audiorecorder
-from streamlit_float import *
 import os
 from streamlit_feedback import streamlit_feedback
-
-# Float feature initialization
-float_init()
 
 def feedback_cb():
     feedback = st.session_state.fb_k
