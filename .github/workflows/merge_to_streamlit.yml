@@ -10,31 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT instead of GITHUB_TOKEN
           fetch-depth: 0
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: Create a new branch for PR
+      - name: Configure Git
         run: |
-          git checkout -b temp-branch-for-pr
-          git push origin temp-branch-for-pr
+          git config user.name 'github-actions'
+          git config user.email 'github-actions@github.com'
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          branch: temp-branch-for-pr
-          base: streamlit
-          title: 'Sync: Main to Streamlit'
-          body: |
-            Automated PR to sync changes from main to streamlit branch
-            
-            Triggered by commit: ${{ github.sha }}
-
-      - name: Auto-merge Pull Request
-        uses: peter-evans/enable-pull-request-automerge@v3
-        with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          pull-request-number: ${{ steps.create-pull-request.outputs.pull-request-number }}
-          merge-method: merge
+      - name: Create and merge PR
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          # Create a new branch
+          git checkout -b temp-sync-branch
+          
+          # Push the branch
+          git push origin temp-sync-branch
+          
+          # Create PR using gh CLI
+          pr_url=$(gh pr create --base streamlit --head temp-sync-branch --title "Sync: Main to Streamlit" --body "Automated PR to sync changes from main to streamlit branch")
+          
+          # Get PR number from URL
+          pr_number=$(echo $pr_url | grep -o '[0-9]*$')
+          
+          # Merge the PR
+          gh pr merge $pr_number --merge --delete-branch
