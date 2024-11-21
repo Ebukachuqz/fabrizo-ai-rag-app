@@ -1,0 +1,39 @@
+name: Sync Streamlit Branch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create a new branch for PR
+        run: |
+          git checkout -b temp-branch-for-pr
+          git push origin temp-branch-for-pr
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          branch: temp-branch-for-pr
+          base: streamlit
+          title: 'Sync: Main to Streamlit'
+          body: |
+            Automated PR to sync changes from main to streamlit branch
+            
+            Triggered by commit: ${{ github.sha }}
+
+      - name: Auto-merge Pull Request
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          pull-request-number: ${{ steps.create-pull-request.outputs.pull-request-number }}
+          merge-method: merge
