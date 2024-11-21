@@ -37,7 +37,7 @@ def feedback_cb():
 audio_response = "audio_response.mp3"
 audio_query = "audio_query.wav"
 
-st.image("header.jpeg", use_column_width=True)
+st.image("header.jpeg", use_container_width=True)
 st.title("Fabrizio Romano Q&A AI Chatbot")
 
 # Set up LLM choice
@@ -74,22 +74,18 @@ for message in st.session_state.chat_history:
                 st.markdown(f"**_Rating:_** {feedback['emoji']}")
 
 user_query = st.chat_input("Ask a question...")
-
-footer_container = st.container()
-
-with footer_container:
-    audio = audiorecorder(start_prompt="", stop_prompt="", pause_prompt="", show_visualizer=False)
+audio = st.audio_input("Record a voice query/question")
 
 def check_new_audio():
     global audio
 
-    if len(audio) == 0:
+    if not audio:
         return False
 
-    if audio == st.session_state.audio_bytes:
+    if audio and audio.getvalue() == st.session_state.audio_bytes:
         return False
     else:
-        st.session_state.audio_bytes = audio
+        st.session_state.audio_bytes = audio.getvalue()
         return True
 
 # Process user input
@@ -98,7 +94,8 @@ if user_query or is_new_audio:
     if os.path.exists(audio_response):
         os.remove(audio_response)
     if is_new_audio:
-        audio.export(audio_query, format="wav")
+        with open(audio_query, "wb") as f:
+            f.write(audio.read())
         with st.chat_message("Human"):
             try:
                 with st.spinner("Transcribing audio..."):
@@ -107,11 +104,11 @@ if user_query or is_new_audio:
                         raise ValueError("No text transcribed")
                     
                     st.session_state.chat_history.append(HumanMessage(content=transcribed_text))
-                    autoplay_audio(audio_query) 
+                    autoplay_audio(audio_query)
                     st.markdown(transcribed_text)
                     user_query = transcribed_text
             except Exception as e:
-                st.error("Failed to transcribe audio. Please rerecord.")
+                st.error(f"Failed to transcribe audio. Error: {e}")
                 st.stop()
             finally:
                 os.remove(audio_query)
