@@ -8,7 +8,7 @@ async def main():
     CSV_FILENAME = os.path.join(os.getcwd(), "data", "fabrizioromano_tweets.csv")
 
     current_date = datetime.now().strftime("%Y-%m-%d")
-    QUERY = f'(from:FabrizioRomano) lang:en until:2024-10-30 since:2024-09-28 -filter:replies'
+    QUERY = f'(from:FabrizioRomano) lang:en until:{current_date} since:2024-09-28 -filter:replies'
 
     initialize_csv(CSV_FILENAME)
 
