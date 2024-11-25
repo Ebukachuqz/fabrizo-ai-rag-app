@@ -14,6 +14,7 @@ import os
 from streamlit_feedback import streamlit_feedback
 from src.prompt import initialize_llm
 from src.langgraph_workflow import initialize_rag_workflow
+from utils.clean_for_tts import clean_for_tts
 
 def feedback_cb():
     feedback = st.session_state.fb_k
@@ -137,20 +138,14 @@ if user_query or is_new_audio:
                 full_response, chunks, urls = rag(st.session_state.rag_thread_id, st.session_state.langgraph_workflow, user_query, llm_choice, api_key)
 
             with st.spinner("Generating audio..."):
-                audio_file = text2speech(remove_emojis(full_response), filename=audio_response)
+                audio_file = text2speech(clean_for_tts(remove_emojis(full_response)), filename=audio_response)
             if audio_file:
                 autoplay_audio(audio_response)
 
             for chunk in chunks:
                 response_text += chunk
                 response_container.write(response_text)
-                time.sleep(0.05)
-
-            # Display references if any
-            if urls:
-                references_text = "\n\n##### References:\n" + "\n".join(f"- [Tweet]({url})" for url in urls[:3])
-                response_text += references_text  
-                response_container.write(response_text) 
+                time.sleep(0.03)
 
             st.session_state.chat_history.append(AIMessage(content=response_text))
 
