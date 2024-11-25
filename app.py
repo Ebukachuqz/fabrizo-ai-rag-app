@@ -12,6 +12,8 @@ from utils.autoplay_audio import autoplay_audio
 from utils.get_ratings_from_emoji import get_rating_from_emoji
 import os
 from streamlit_feedback import streamlit_feedback
+from src.prompt import initialize_llm
+from src.langgraph_workflow import initialize_rag_workflow
 
 def feedback_cb():
     feedback = st.session_state.fb_k
@@ -61,6 +63,13 @@ if "audio_bytes" not in st.session_state:
 
 if "feedback_status" not in st.session_state:
     st.session_state.feedback_status = {}
+
+llm = initialize_llm(llm_choice, api_key)
+
+# Initialize session state for langgraph workflow
+if 'langgraph_workflow' not in st.session_state:
+    st.session_state.langgraph_workflow = initialize_rag_workflow(llm)
+    st.session_state.rag_thread_id = "1"
 
 # Display conversation history
 for message in st.session_state.chat_history:
@@ -125,7 +134,7 @@ if user_query or is_new_audio:
 
         try:
             with st.spinner("Generating response..."):
-                full_response, chunks, urls = rag(user_query, llm_choice, api_key)
+                full_response, chunks, urls = rag(st.session_state.rag_thread_id, st.session_state.langgraph_workflow, user_query, llm_choice, api_key)
 
             with st.spinner("Generating audio..."):
                 audio_file = text2speech(remove_emojis(full_response), filename=audio_response)
@@ -135,7 +144,7 @@ if user_query or is_new_audio:
             for chunk in chunks:
                 response_text += chunk
                 response_container.write(response_text)
-                time.sleep(0.1)
+                time.sleep(0.05)
 
             # Display references if any
             if urls:
