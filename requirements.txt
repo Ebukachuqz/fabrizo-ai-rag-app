@@ -14,3 +14,4 @@ openlit==1.27.1
 deepgram-sdk==3.11.0
 streamlit_feedback
 langgraph
+langchain-community
