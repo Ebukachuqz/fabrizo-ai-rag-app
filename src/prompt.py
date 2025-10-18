@@ -26,7 +26,7 @@ default_groq_api = os.getenv("GROQ_API_KEY")
 # Default Groq LLM setup
 default_llm = ChatGroq(
     api_key=default_groq_api,
-    model="llama3-8b-8192",
+    model="llama-3.3-70b-versatile",
     temperature=0,
     max_tokens=None,
     timeout=None,
@@ -39,7 +39,7 @@ def initialize_llm(choice, api_key=None):
     if choice == "Groq" and api_key:
         return ChatGroq(
             api_key=api_key,
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             temperature=0,
             max_tokens=None,
             timeout=None,
