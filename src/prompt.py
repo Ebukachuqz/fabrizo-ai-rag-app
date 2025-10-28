@@ -1,4 +1,4 @@
-import openlit
+# import openlit # version is crashing app now
 import os
 from dotenv import load_dotenv
 from groq import Groq
@@ -12,7 +12,7 @@ from langgraph.graph import MessagesState, StateGraph, START, END
 import streamlit as st
 from typing import Literal, Dict, Any, Optional, Tuple, List
 
-openlit.init()
+# openlit.init()
 load_dotenv()
 
 class State(MessagesState):
@@ -23,16 +23,18 @@ class State(MessagesState):
 # Load default Groq API key
 default_groq_api = os.getenv("GROQ_API_KEY")
 
-# Default Groq LLM setup
-default_llm = ChatGroq(
-    api_key=default_groq_api,
-    model="llama-3.3-70b-versatile",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-    stream=False,
-)
+# Default Groq LLM setup (only if API key is available)
+default_llm = None
+if default_groq_api:
+    default_llm = ChatGroq(
+        api_key=default_groq_api,
+        model="llama-3.3-70b-versatile",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2,
+        stream=False,
+    )
 
 def initialize_llm(choice, api_key=None):
     """Initialize the LLM based on user choice."""
@@ -54,8 +56,10 @@ def initialize_llm(choice, api_key=None):
             max_tokens=None,
             stream=True,
         )
-    else:
+    elif default_llm:
         return default_llm
+    else:
+        raise ValueError("No API key provided and no default LLM available. Please provide an API key.")
 
 def ask_llm(thread_id_state, langgraph_workflow_state, query, context, llm_choice="Groq", api_key=None):
     """Main function to process queries with LangGraph memory"""

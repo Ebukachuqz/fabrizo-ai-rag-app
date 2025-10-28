@@ -1,0 +1,4 @@
+$4a71f0e4-f9d1-4c02-a1f3-904d0bceaa24²‹*tweet_count ÿÿÿÿÿÿÿÿÿ*int648Zdefault)tweet_id ÿÿÿÿÿÿÿÿÿ*int648Zdefault*username ÿÿÿÿÿÿÿÿÿ*string8Zdefault&text ÿÿÿÿÿÿÿÿÿ*string8Zdefault,
+created_at ÿÿÿÿÿÿÿÿÿ*string8Zdefault%url ÿÿÿÿÿÿÿÿÿ*string8Zdefault=vector ÿÿÿÿÿÿÿÿÿ*fixed_size_list:float:76808Zdefault"!
+lance.auto_cleanup.interval20"'
+lance.auto_cleanup.older_than14days

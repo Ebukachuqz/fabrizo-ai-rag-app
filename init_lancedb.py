@@ -7,8 +7,8 @@ from lancedb.embeddings import get_registry
 
 load_dotenv()
 
-db_path = os.getenv("LANCEDB_PATH")
-table_name = os.getenv("LANCEDB_TABLE")
+db_path = os.getenv("LANCEDB_PATH", "./lancedb_data")
+table_name = os.getenv("LANCEDB_TABLE", "fabrizio_tweets")
 
 model = get_registry().get("sentence-transformers").create(name="all-mpnet-base-v2")
 
