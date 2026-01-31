@@ -16,21 +16,21 @@ from src.prompt import initialize_llm
 from src.langgraph_workflow import initialize_rag_workflow
 from utils.clean_for_tts import clean_for_tts
 
-def feedback_cb():
-    feedback = st.session_state.fb_k
-    if feedback:
-        rating = get_rating_from_emoji(feedback['score'])
-        latest_human_query = st.session_state.chat_history[-2].content
-        latest_ai_response = st.session_state.chat_history[-1].content
-
-        # Store feedback status with the corresponding AI response
-        st.session_state.feedback_status[latest_ai_response] = {
+def feedback_cb(user_query, ai_response, key_id):
+    # Retrieve the score from the specific widget key
+    feedback_state = st.session_state[key_id]
+    
+    if feedback_state:
+        rating = get_rating_from_emoji(feedback_state['score'])
+        
+        # Store feedback status
+        st.session_state.feedback_status[ai_response] = {
             'rating': rating,
-            'emoji': feedback['score']
+            'emoji': feedback_state['score']
         }
         
         try:
-            store_feedback(latest_human_query, latest_ai_response, rating)
+            store_feedback(user_query, ai_response, rating)
             st.toast("Thank you for your feedback!", icon="✨")
         except Exception as e:
             st.toast("Error saving feedback", icon="🚨")
@@ -149,9 +149,18 @@ if user_query or is_new_audio:
 
             st.session_state.chat_history.append(AIMessage(content=response_text))
 
-            with st.form('form'):
-                streamlit_feedback(feedback_type="faces", align="flex-start", key='fb_k')
-                st.form_submit_button('Submit feedback', on_click=feedback_cb)
+            # Create a unique key for this specific interaction 
+            # using the length of history to ensure every new message gets a unique ID
+            unique_key = f"fb_{len(st.session_state.chat_history)}"
+
+            # pass the user query and AI response as args to the callback
+            streamlit_feedback(
+                feedback_type="faces", 
+                align="flex-start", 
+                key=unique_key,
+                on_submit=feedback_cb,
+                args=(user_query, response_text, unique_key)
+            )
 
         except Exception as e:
             error_str = str(e)
