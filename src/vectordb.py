@@ -12,7 +12,7 @@ cross_encoder_model = "cross-encoder/ms-marco-MiniLM-L-2-v2"
 ce_reranker = CrossEncoderReranker(model_name=cross_encoder_model)
 lc_reranker = LinearCombinationReranker(weight=0.7)
 
-def lancedb_hybrid_search(query, k=5):
+def lancedb_hybrid_search(query, k=3):
     db = lancedb.connect(db_path)
     table = db.open_table(table_name)
     
