@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import unicodedata
 import unittest
 from unittest.mock import patch
@@ -202,6 +202,7 @@ class PseudoSmokeTests(unittest.TestCase):
         self.assertIsNone(greeting("Hi, what about Chelsea transfers?"))
 
     def test_keyword_search_ranks_and_cites_without_model_downloads(self):
+        os.environ["RETRIEVAL_MODE"] = "keyword"
         namespace = load_retrieval()
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -290,6 +291,7 @@ class PseudoSmokeTests(unittest.TestCase):
         self.assertTrue(st.output[-1].startswith("Hi!"))
 
     def test_repository_tweets_search_without_external_dependencies(self):
+        os.environ["RETRIEVAL_MODE"] = "keyword"
         namespace = load_retrieval()
         context, urls = namespace["search_tweets"]("Chelsea", k=3)
         self.assertGreater(len(context), 0)
@@ -299,6 +301,27 @@ class PseudoSmokeTests(unittest.TestCase):
             self.assertIn("chelsea", text.casefold())
             self.assertIn(url, text)
             self.assertTrue(url.startswith("https://"))
+
+    def test_hybrid_vector_search_is_default_and_initializes_before_search(self):
+        namespace = load_retrieval()
+        for value in (None, "", "  ", "HYBRID"):
+            if value is None:
+                os.environ.pop("RETRIEVAL_MODE", None)
+            else:
+                os.environ["RETRIEVAL_MODE"] = value
+            self.assertEqual(namespace["get_retrieval_mode"](), "hybrid")
+        calls = []
+        database = ModuleType("init_lancedb")
+        database.initialize_database = lambda: calls.append("initialize")
+        vectordb = ModuleType("src.vectordb")
+        def search(query, k):
+            calls.append(("hybrid", query, k))
+            return ["vector context"], ["https://example.com/tweet"]
+        vectordb.lancedb_hybrid_search = search
+        with patch.dict("sys.modules", {"init_lancedb": database, "src.vectordb": vectordb}):
+            self.assertEqual(namespace["search_tweets"]("Chelsea", k=2),
+                             (["vector context"], ["https://example.com/tweet"]))
+        self.assertEqual(calls, ["initialize", ("hybrid", "Chelsea", 2)])
 
 
 if __name__ == "__main__":

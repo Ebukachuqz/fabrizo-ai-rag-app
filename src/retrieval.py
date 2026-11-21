@@ -1,4 +1,4 @@
-"""Search saved tweets without downloading models on the default chat path."""
+"""Search saved tweets with hybrid embeddings or optional keyword retrieval."""
 
 from collections import Counter, defaultdict
 import csv
@@ -67,7 +67,7 @@ def keyword_search(query, k=3):
 
 
 def get_retrieval_mode():
-    mode = (os.getenv("RETRIEVAL_MODE") or "keyword").strip().lower()
+    mode = (os.getenv("RETRIEVAL_MODE") or "").strip().lower() or "hybrid"
     if mode not in ("keyword", "hybrid"):
         raise ValueError("RETRIEVAL_MODE must be 'keyword' or 'hybrid'.")
     return mode
@@ -77,8 +77,8 @@ def search_tweets(query, k=3):
     if get_retrieval_mode() == "keyword":
         return keyword_search(query, k)
 
-    # Advanced mode retains the evaluated semantic search, but only loads its
-    # embedding and reranking models when explicitly enabled by the deployment.
+    # Load embedding and reranking models on the first search, not for greetings
+    # or while rendering the initial page.
     from init_lancedb import initialize_database
     from src.vectordb import lancedb_hybrid_search
 

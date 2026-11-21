@@ -133,11 +133,11 @@ directory and the `fabrizio_tweets` table. `DG_API_KEY` enables optional voice
 input and the **Read answers aloud** checkbox. Text answers do not depend on voice.
 
 Streamlit is pinned to 1.45.1, which includes the browser session-message fixes.
-Normal chat uses a cached keyword index of the saved CSV, so it does not download
-embedding models or build a vector database before answering. Greetings respond
-immediately without an API call. Set `RETRIEVAL_MODE=hybrid` to opt into the
-evaluated LanceDB semantic search; its first query still downloads and initializes
-the embedding models. The app displays original retrieval/provider errors and
+Normal chat uses LanceDB hybrid search with vector embeddings by default. Its
+first search may download models and build the vector database; existing tables
+are reused. Greetings respond immediately without an API call or database setup.
+Set `RETRIEVAL_MODE=keyword` to use the cached CSV keyword index without embedding
+models. The app displays original retrieval/provider errors and
 retains conversation memory when switching providers or API keys.
 
 Run the regression tests in an isolated environment:
@@ -243,7 +243,7 @@ If you encounter any issues, make sure all dependencies are installed correctly 
 
 2. **`app.py`**: This is the Streamlit application that provides the user interface. It allows users to input a query (question), fetches the answer using the Retrieval-Augmented Generation (RAG) flow, and displays the relevant tweets as references. It also allows users to rate the responses and stores the feedback in MongoDB.
 
-3. **`src/rag.py`**: Implements the RAG flow through `src/retrieval.py`. The default retrieval ranks saved CSV tweets with a cached BM25 keyword index. Optional hybrid mode uses LanceDB. Matching tweet context and URLs are passed to the selected LLM; no-match queries return a useful message without a model call.
+3. **`src/rag.py`**: Implements the RAG flow through `src/retrieval.py`. The default retrieval uses LanceDB hybrid vector search. Optional keyword mode ranks saved CSV tweets with a cached BM25 index. Matching tweet context and URLs are passed to the selected LLM; no-match queries return a useful message without a model call.
 
 4. **`src/vectordb.py`**: Contains the logic for interacting with LanceDB. It handles hybrid search using both vector embeddings and keyword search. It also performs reranking of results using a cross-encoder model to improve the quality of the retrieved context.
 
