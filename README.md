@@ -125,6 +125,34 @@ Ensure you have Docker and Docker Compose installed:
 
 ## Running the Application Without Docker
 
+Use Python 3.12 to match the Streamlit deployment. Copy `.env.example` to
+`.env` and set `GROQ_API_KEY` (or select OpenAI and supply `OPENAI_API_KEY`).
+The default Groq model is `qwen/qwen3.8-27b`; set `GROQ_MODEL` to override it.
+Database ingestion and search both default to `./lancedb_data` in the project
+directory and the `fabrizio_tweets` table. `DG_API_KEY` enables optional voice
+input and the **Read answers aloud** checkbox. Text answers do not depend on voice.
+
+The database and embedding models initialize on the first valid chat request.
+The app displays the original retrieval/provider error if a request fails and
+retains conversation memory when switching providers or API keys.
+
+Run the regression tests in an isolated environment:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+For a quick check without installing dependencies, run `python tests/pseudo_smoke.py`
+with Python 3.11+. This checks the actual configuration, RAG error handling, model
+construction, and session-switching functions with controlled substitutes; it
+does not launch Streamlit or validate embeddings.
+
+Tests use a temporary real LanceDB database, deterministic test embeddings,
+LangGraph conversation memory, and Streamlit's AppTest runner. They do not use
+your API keys or call external models. Streamlit Cloud deploys the `streamlit`
+branch; local changes must reach that branch on GitHub to update the live app.
+
 If you want to run the app directly without Docker, follow these steps:
 
 ### Prerequisites

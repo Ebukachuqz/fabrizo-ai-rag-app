@@ -1,14 +1,16 @@
 import base64
+import mimetypes
 
 def autoplay_audio(audio_file):
     """Render an autoplaying audio element when running under Streamlit.
 
     Safely no-ops when Streamlit isn't initialized (e.g., running as a script/tests).
     """
-    with open(audio_file, "rb") as audio_file:
-        audio_bytes = audio_file.read()
+    mime_type = mimetypes.guess_type(str(audio_file))[0] or "audio/wav"
+    with open(audio_file, "rb") as audio_stream:
+        audio_bytes = audio_stream.read()
     base64_audio = base64.b64encode(audio_bytes).decode("utf-8")
-    audio_html = f'<audio src="data:audio/mp3;base64,{base64_audio}" controls autoplay>'
+    audio_html = f'<audio src="data:{mime_type};base64,{base64_audio}" controls autoplay></audio>'
 
     # Lazy-import Streamlit and guard on active context to avoid SessionInfo errors
     try:

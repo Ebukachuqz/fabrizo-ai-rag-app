@@ -1,168 +1,108 @@
+import logging
+import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
+
 from init_lancedb import initialize_database
+from src.config import PROJECT_ROOT, get_database_settings
 from src.rag import rag
-# from src.feedback import store_feedback               <-- Commented out
-from src.text2speech import text2speech
+from src.session import get_session_workflow
 from src.speech2text import speech2text
-from utils.remove_emojis import remove_emojis
-import time
-import re
+from src.text2speech import text2speech
 from utils.autoplay_audio import autoplay_audio
-# from utils.get_ratings_from_emoji import get_rating_from_emoji  <-- Commented out
-import os
-# from streamlit_feedback import streamlit_feedback     <-- Commented out
-from src.prompt import initialize_llm
-from src.langgraph_workflow import initialize_rag_workflow
 from utils.clean_for_tts import clean_for_tts
+from utils.remove_emojis import remove_emojis
 
-# --- FEEDBACK CALLBACK COMMENTED OUT ---
-# def feedback_cb():
-#     feedback = st.session_state.fb_k
-#     if feedback:
-#         rating = get_rating_from_emoji(feedback['score'])
-#         latest_human_query = st.session_state.chat_history[-2].content
-#         latest_ai_response = st.session_state.chat_history[-1].content
-#
-#         # Store feedback status with the corresponding AI response
-#         st.session_state.feedback_status[latest_ai_response] = {
-#             'rating': rating,
-#             'emoji': feedback['score']
-#         }
-#         
-#         try:
-#             store_feedback(latest_human_query, latest_ai_response, rating)
-#             st.toast("Thank you for your feedback!", icon="✨")
-#         except Exception as e:
-#             st.toast("Error saving feedback", icon="🚨")
-#             print(f"Error storing feedback: {str(e)}")
+logger = logging.getLogger(__name__)
 
-audio_response = "audio_response.mp3"
-audio_query = "audio_query.wav"
 
-st.image("header.jpeg", use_container_width=True)
+@st.cache_resource(show_spinner=False)
+def setup_database(db_path, table_name):
+    # Include configuration in the cache key so another database is initialized
+    # if deployment settings change.
+    return initialize_database()
+
+
+st.image(str(PROJECT_ROOT / "header.jpeg"), use_container_width=True)
 st.title("Fabrizio Romano Q&A AI Chatbot")
-
-# Set up LLM choice
-llm_options = ["Groq", "OpenAI"]
 st.sidebar.subheader("Select an LLM model")
-st.sidebar.caption("Default is Groq. Easy on my credits tho😭")
-st.sidebar.text("If you want to try other LLM models.")
-llm_choice = st.sidebar.selectbox("Choose LLM Model", llm_options)
-api_key = st.sidebar.text_input(f"Enter {llm_choice} API Key:", type="password")
+llm_choice = st.sidebar.selectbox("Choose LLM Model", ["Groq", "OpenAI"])
+api_key = st.sidebar.text_input(
+    f"Enter {llm_choice} API Key:", type="password", key=f"{llm_choice}_api_key"
+)
+voice_available = bool(os.getenv("DG_API_KEY"))
+read_aloud = st.sidebar.checkbox("Read answers aloud", value=False, disabled=not voice_available)
+if not voice_available:
+    st.sidebar.caption("Voice input and playback require DG_API_KEY. Text chat is available.")
 
-with st.spinner("Setting up the database. This may take 3-6 minutes..."):
-    initialize_database()
-
-# Initialize chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
-        AIMessage(content="Hello, I am a Fabrizo Romano AI bot. Ask me any transfer/football questions Fabrizo has tweeted about in the past."),
+        AIMessage(content="Hello, I am a Fabrizio Romano AI bot. Ask me any transfer/football questions Fabrizio has tweeted about in the past."),
     ]
-
 if "audio_bytes" not in st.session_state:
     st.session_state.audio_bytes = None
 
-# --- FEEDBACK STATE COMMENTED OUT ---
-# if "feedback_status" not in st.session_state:
-#     st.session_state.feedback_status = {}
-
-llm = initialize_llm(llm_choice, api_key)
-
-# Initialize session state for langgraph workflow
-if 'langgraph_workflow' not in st.session_state:
-    st.session_state.langgraph_workflow = initialize_rag_workflow(llm)
-    st.session_state.rag_thread_id = "1"
-
-# Display conversation history
 for message in st.session_state.chat_history:
-    with st.chat_message("AI" if isinstance(message, AIMessage) else "Human"):
-        st.write(message.content)
-
-        # --- FEEDBACK DISPLAY COMMENTED OUT ---
-        # if isinstance(message, AIMessage):
-        #     feedback = st.session_state.feedback_status.get(message.content)
-        #     if feedback:
-        #         st.markdown(f"**_Rating:_** {feedback['emoji']}")
+    with st.chat_message("assistant" if isinstance(message, AIMessage) else "user"):
+        st.markdown(message.content)
 
 user_query = st.chat_input("Ask a question...")
-audio = st.audio_input("Record a voice query/question")
+audio = st.audio_input("Record a voice query/question", disabled=not voice_available)
+audio_bytes = audio.getvalue() if audio else None
+is_new_audio = audio_bytes is not None and audio_bytes != st.session_state.audio_bytes
 
-def check_new_audio():
-    global audio
-
-    if not audio:
-        return False
-
-    if audio and audio.getvalue() == st.session_state.audio_bytes:
-        return False
-    else:
-        st.session_state.audio_bytes = audio.getvalue()
-        return True
-
-# Process user input
-is_new_audio = check_new_audio()
 if user_query or is_new_audio:
-    if os.path.exists(audio_response):
-        os.remove(audio_response)
-    if is_new_audio:
-        with open(audio_query, "wb") as f:
-            f.write(audio.read())
-        with st.chat_message("Human"):
+    with TemporaryDirectory(prefix="fabrizio-chat-") as audio_dir:
+        if is_new_audio:
+            st.session_state.audio_bytes = audio_bytes
+            audio_query = Path(audio_dir) / "query.wav"
+            audio_query.write_bytes(audio_bytes)
             try:
                 with st.spinner("Transcribing audio..."):
-                    transcribed_text = speech2text(audio_query)
-                    if not transcribed_text or transcribed_text.strip() == "":
-                        raise ValueError("No text transcribed")
-                    
-                    st.session_state.chat_history.append(HumanMessage(content=transcribed_text))
-                    autoplay_audio(audio_query)
-                    st.markdown(transcribed_text)
-                    user_query = transcribed_text
-            except Exception as e:
-                st.error(f"Failed to transcribe audio. Error: {e}")
+                    user_query = speech2text(str(audio_query))
+                    if not user_query or not user_query.strip():
+                        raise ValueError("No speech was detected. Please try again.")
+            except Exception as exc:
+                logger.exception("Audio transcription failed")
+                st.error(f"Failed to transcribe audio: {exc}")
                 st.stop()
-            finally:
-                if os.path.exists(audio_query):
-                    os.remove(audio_query)
-                    
-    elif user_query:
+
         st.session_state.chat_history.append(HumanMessage(content=user_query))
-        with st.chat_message("Human"):
+        with st.chat_message("user"):
+            if is_new_audio:
+                st.audio(audio_bytes, format="audio/wav")
             st.markdown(user_query)
-    else:
-        st.stop()
 
-    with st.chat_message("AI"):
-        response_container = st.empty()
-        response_text = ""
+        with st.chat_message("assistant"):
+            try:
+                # Validate credentials before downloading models or building the DB.
+                workflow = get_session_workflow(st.session_state, llm_choice, api_key)
+                with st.spinner("Setting up the database. The first query may take a few minutes..."):
+                    setup_database(*get_database_settings())
+                with st.spinner("Generating response..."):
+                    full_response, chunks, urls = rag(
+                        st.session_state.rag_thread_id, workflow, user_query
+                    )
+                st.markdown(full_response)
+                st.session_state.chat_history.append(AIMessage(content=full_response))
+            except Exception as exc:
+                logger.exception("Chat response failed")
+                st.error(f"Unable to answer your question: {exc}")
+                st.stop()
 
-        try:
-            with st.spinner("Generating response..."):
-                full_response, chunks, urls = rag(st.session_state.rag_thread_id, st.session_state.langgraph_workflow, user_query, llm_choice, api_key)
-
-            with st.spinner("Generating audio..."):
-                audio_file = text2speech(clean_for_tts(remove_emojis(full_response)), filename=audio_response)
-            if audio_file:
-                autoplay_audio(audio_response)
-
-            for chunk in chunks:
-                response_text += chunk
-                response_container.write(response_text)
-                time.sleep(0.03)
-
-            st.session_state.chat_history.append(AIMessage(content=response_text))
-
-            # --- FEEDBACK WIDGET COMMENTED OUT ---
-            # with st.form('form'):
-            #     streamlit_feedback(feedback_type="faces", align="flex-start", key='fb_k')
-            #     st.form_submit_button('Submit feedback', on_click=feedback_cb)
-
-        except Exception as e:
-            error_str = str(e)
-            match = re.search(r"'message':\s'(.+?)'", error_str)
-            if match:
-                error_message = match.group(1)
-                st.error(error_message)
-            else:
-                st.error(str(e))
+            if read_aloud:
+                try:
+                    with st.spinner("Generating audio..."):
+                        audio_file = text2speech(
+                            clean_for_tts(remove_emojis(full_response)),
+                            filename=str(Path(audio_dir) / "response.wav"),
+                        )
+                    if not audio_file:
+                        raise ValueError("The speech service returned no audio.")
+                    autoplay_audio(audio_file)
+                except Exception:
+                    logger.exception("Audio playback failed")
+                    st.warning("Your answer is ready, but audio playback is unavailable.")

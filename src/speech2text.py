@@ -1,23 +1,22 @@
 import os
-import logging
-from deepgram.utils import verboselogs
-from dotenv import load_dotenv
+from src import config
 
 from deepgram import (
     DeepgramClient,
     PrerecordedOptions,
 )
-load_dotenv()
-api_key = os.getenv("DG_API_KEY")
 
 def speech2text(audio):
     try:
-        deepgram: DeepgramClient = DeepgramClient(api_key=api_key)
+        api_key = os.getenv("DG_API_KEY")
+        if not api_key:
+            raise ValueError("Voice input requires DG_API_KEY.")
+        deepgram = DeepgramClient(api_key=api_key)
 
         with open(audio, "rb") as file:
             buffer_data = file.read()
 
-        payload: FileSource = {
+        payload = {
             "buffer": buffer_data,
         }
 
@@ -28,13 +27,10 @@ def speech2text(audio):
 
         response = deepgram.listen.rest.v("1").transcribe_file(payload, options)
 
-        transcript = response['results']['channels'][0]['alternatives'][0]['transcript']
-
-        print(f"Transcript: {transcript}")
-        return transcript
+        return response.results.channels[0].alternatives[0].transcript
 
     except Exception as e:
-        print(f"Exception: {e}")
+        raise RuntimeError(f"Speech transcription failed: {e}") from e
 
 
 if __name__ == "__main__":

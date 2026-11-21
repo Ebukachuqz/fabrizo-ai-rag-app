@@ -1,4 +1,7 @@
 .env
+.test-tools/
+lancedb_data/
+.streamlit/secrets.toml
 __pycache__/
 *.pyc
 *.pyo

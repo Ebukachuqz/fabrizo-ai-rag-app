@@ -8,9 +8,10 @@ class State(MessagesState):
     summary: str
     context: str
 
-def initialize_rag_workflow(llm):
+def initialize_rag_workflow(llm, memory=None):
     """Create a RAG workflow with LangGraph memory management"""
-    memory = MemorySaver()
+    if memory is None:
+        memory = MemorySaver()
     workflow = StateGraph(State)
     
     def call_model(state: State):

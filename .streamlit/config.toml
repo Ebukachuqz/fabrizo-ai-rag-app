@@ -1,0 +1,3 @@
+[server]
+# Avoid Streamlit's file watcher inspecting PyTorch's dynamic torch.classes.
+fileWatcherType = "none"

@@ -1,20 +1,19 @@
 import os
-import logging
-from deepgram.utils import verboselogs
-from dotenv import load_dotenv
+from src import config
 
 from deepgram import (
     DeepgramClient,
     SpeakOptions,
 )
 
-load_dotenv()
-api_key = os.getenv("DG_API_KEY")
 
 
 
 def text2speech(text, filename):
     try:
+        api_key = os.getenv("DG_API_KEY")
+        if not api_key:
+            raise ValueError("Audio playback requires DG_API_KEY.")
         SPEAK_OPTIONS = {"text": text}
         deepgram = DeepgramClient(api_key=api_key)
 
@@ -23,12 +22,11 @@ def text2speech(text, filename):
             encoding="linear16",
         )
 
-        response = deepgram.speak.rest.v("1").save(filename, SPEAK_OPTIONS, options)
-        # print(response.to_json(indent=4))
+        deepgram.speak.rest.v("1").save(filename, SPEAK_OPTIONS, options)
         return filename
 
     except Exception as e:
-        print(f"Exception: {e}")
+        raise RuntimeError(f"Speech generation failed: {e}") from e
 
 if __name__ == "__main__":
-    text2speech("Read this [Tweet](www.example.com)")
+    text2speech("Here we go!", "response.wav")
