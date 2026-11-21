@@ -6,9 +6,9 @@ from tempfile import TemporaryDirectory
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 
-from init_lancedb import initialize_database
-from src.config import PROJECT_ROOT, get_database_settings
+from src.config import PROJECT_ROOT
 from src.rag import rag
+from src.retrieval import get_greeting_response
 from src.session import get_session_workflow
 from src.speech2text import speech2text
 from src.text2speech import text2speech
@@ -17,13 +17,6 @@ from utils.clean_for_tts import clean_for_tts
 from utils.remove_emojis import remove_emojis
 
 logger = logging.getLogger(__name__)
-
-
-@st.cache_resource(show_spinner=False)
-def setup_database(db_path, table_name):
-    # Include configuration in the cache key so another database is initialized
-    # if deployment settings change.
-    return initialize_database()
 
 
 st.image(str(PROJECT_ROOT / "header.jpeg"), use_container_width=True)
@@ -78,14 +71,13 @@ if user_query or is_new_audio:
 
         with st.chat_message("assistant"):
             try:
-                # Validate credentials before downloading models or building the DB.
-                workflow = get_session_workflow(st.session_state, llm_choice, api_key)
-                with st.spinner("Setting up the database. The first query may take a few minutes..."):
-                    setup_database(*get_database_settings())
-                with st.spinner("Generating response..."):
-                    full_response, chunks, urls = rag(
-                        st.session_state.rag_thread_id, workflow, user_query
-                    )
+                full_response = get_greeting_response(user_query)
+                if full_response is None:
+                    workflow = get_session_workflow(st.session_state, llm_choice, api_key)
+                    with st.spinner("Searching saved tweets and generating a response..."):
+                        full_response, chunks, urls = rag(
+                            st.session_state.rag_thread_id, workflow, user_query
+                        )
                 st.markdown(full_response)
                 st.session_state.chat_history.append(AIMessage(content=full_response))
             except Exception as exc:

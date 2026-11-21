@@ -5,10 +5,18 @@ These checks do not launch Streamlit, embed tweets, or call external services.
 """
 
 import ast
+from collections import Counter, defaultdict
+import csv
+from functools import lru_cache
 from hashlib import sha256
+import logging
+import math
 import os
 from pathlib import Path
+import re
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
+import unicodedata
 import unittest
 from unittest.mock import patch
 import tomllib
@@ -21,6 +29,18 @@ def load_functions(path, namespace):
     functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
     exec(compile(ast.Module(body=functions, type_ignores=[]), path, "exec"), namespace)
     return namespace
+
+
+def load_retrieval():
+    namespace = {"Counter": Counter, "defaultdict": defaultdict, "csv": csv,
+                 "lru_cache": lru_cache, "math": math, "os": os, "re": re,
+                 "unicodedata": unicodedata, "PROJECT_ROOT": ROOT}
+    tree = ast.parse((ROOT / "src/retrieval.py").read_text(encoding="utf-8"))
+    constants = [node for node in tree.body if isinstance(node, ast.Assign)
+                 and any(isinstance(target, ast.Name) and target.id == "STOP_WORDS"
+                         for target in node.targets)]
+    exec(compile(ast.Module(body=constants, type_ignores=[]), "src/retrieval.py", "exec"), namespace)
+    return load_functions("src/retrieval.py", namespace)
 
 
 class HumanMessage:
@@ -79,7 +99,7 @@ class PseudoSmokeTests(unittest.TestCase):
             calls.append(args)
             return "Answer", ["An", "swer"]
         namespace = load_functions("src/rag.py", {
-            "lancedb_hybrid_search": lambda query: (["tweet one", "tweet two"], ["url"]),
+            "search_tweets": lambda query: (["tweet one", "tweet two"], ["url"]),
             "ask_llm": ask,
         })
         self.assertEqual(namespace["rag"]("thread", "workflow", "query"),
@@ -93,7 +113,7 @@ class PseudoSmokeTests(unittest.TestCase):
                 def fail(*args):
                     raise original
                 namespace = load_functions("src/rag.py", {
-                    "lancedb_hybrid_search": fail if stage == "retrieval" else lambda query: (["tweet"], ["url"]),
+                    "search_tweets": fail if stage == "retrieval" else lambda query: (["tweet"], ["url"]),
                     "ask_llm": fail if stage == "model" else lambda *args: ("answer", ["answer"]),
                 })
                 with self.assertRaises(RuntimeError) as raised:
@@ -169,6 +189,116 @@ class PseudoSmokeTests(unittest.TestCase):
                             and isinstance(node.test, ast.Name) and node.test.id == "read_aloud")
         self.assertTrue(any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                             and node.func.id == "text2speech" for node in ast.walk(voice_branch)))
+
+    def test_streamlit_pin_includes_session_message_fix(self):
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+        self.assertIn("streamlit==1.45.1", requirements)
+
+    def test_greetings_do_not_swallow_football_questions(self):
+        greeting = load_retrieval()["get_greeting_response"]
+        for query in ("hi", "Hi there!", "HELLO", "hey", "good morning"):
+            with self.subTest(query=query):
+                self.assertTrue(greeting(query).startswith("Hi!"))
+        self.assertIsNone(greeting("Hi, what about Chelsea transfers?"))
+
+    def test_keyword_search_ranks_and_cites_without_model_downloads(self):
+        namespace = load_retrieval()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir()
+            path = root / "data/fabrizioromano_tweets.csv"
+            with path.open("w", encoding="utf-8", newline="") as target:
+                writer = csv.DictWriter(target, fieldnames=["text", "created at", "url"])
+                writer.writeheader()
+                writer.writerows([
+                    {"text": "Chelsea signed a striker", "created at": "2024-09-01", "url": "https://example.com/chelsea"},
+                    {"text": "Arsenal signed a defender", "created at": "2024-09-02", "url": "https://example.com/arsenal"},
+                    {"text": "Rúben Amorim joined Manchester United", "created at": "2024-09-03", "url": "https://example.com/amorim"},
+                ])
+            namespace["PROJECT_ROOT"] = root
+            self.assertEqual(namespace["get_retrieval_mode"](), "keyword")
+            context, urls = namespace["search_tweets"]("What did Chelsea do?", k=1)
+            self.assertEqual(urls, ["https://example.com/chelsea"])
+            self.assertIn("Chelsea signed a striker", context[0])
+            self.assertIn("2024-09-01", context[0])
+            namespace["search_tweets"]("Chelsea", k=1)
+            self.assertEqual(namespace["load_keyword_index"].cache_info().misses, 1)
+            self.assertGreaterEqual(namespace["load_keyword_index"].cache_info().hits, 1)
+            self.assertEqual(namespace["keyword_search"]("Ruben Amorim", k=1)[1], ["https://example.com/amorim"])
+            self.assertEqual(namespace["keyword_search"]("nonexistentplayer"), ([], []))
+            os.environ["RETRIEVAL_MODE"] = "invalid"
+            with self.assertRaisesRegex(ValueError, "RETRIEVAL_MODE"):
+                namespace["get_retrieval_mode"]()
+
+    def test_no_matching_tweets_does_not_invoke_model(self):
+        def forbidden(*args):
+            self.fail("No-context responses must not invoke the model")
+        namespace = load_functions("src/rag.py", {
+            "search_tweets": lambda query: ([], []), "ask_llm": forbidden,
+        })
+        answer, chunks, urls = namespace["rag"]("1", None, "unmatched")
+        self.assertIn("couldn't find matching tweets", answer)
+        self.assertEqual(answer, "".join(chunks))
+        self.assertEqual(urls, [])
+
+    def test_actual_app_greeting_bypasses_database_and_provider(self):
+        class State(dict):
+            __getattr__ = dict.__getitem__
+            __setattr__ = dict.__setitem__
+
+        class FakeStreamlit:
+            def __init__(self):
+                self.session_state = State()
+                self.sidebar = self
+                self.output = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def image(self, *args, **kwargs): pass
+            def title(self, *args): pass
+            def subheader(self, *args): pass
+            def caption(self, *args): pass
+            def selectbox(self, *args): return "Groq"
+            def text_input(self, *args, **kwargs): return ""
+            def checkbox(self, *args, **kwargs): return False
+            def chat_input(self, *args): return "hi"
+            def audio_input(self, *args, **kwargs): return None
+            def chat_message(self, *args): return self
+            def markdown(self, text): self.output.append(text)
+
+            def error(self, text):
+                raise AssertionError(text)
+
+        def forbidden(*args, **kwargs):
+            self.fail("A greeting must not initialize a provider or search database")
+
+        st = FakeStreamlit()
+        tree = ast.parse((ROOT / "app.py").read_text(encoding="utf-8"))
+        tree.body = [node for node in tree.body if not isinstance(node, (ast.Import, ast.ImportFrom))]
+        namespace = {"__name__": "pseudo_app", "logging": logging, "os": os,
+                     "st": st, "PROJECT_ROOT": ROOT, "Path": Path,
+                     "TemporaryDirectory": TemporaryDirectory, "AIMessage": AIMessage,
+                     "HumanMessage": HumanMessage, "get_session_workflow": forbidden,
+                     "rag": forbidden, "get_greeting_response": load_retrieval()["get_greeting_response"]}
+        exec(compile(tree, "app.py", "exec"), namespace)
+        self.assertEqual(len(st.session_state["chat_history"]), 3)
+        self.assertTrue(st.session_state["chat_history"][-1].content.startswith("Hi!"))
+        self.assertTrue(st.output[-1].startswith("Hi!"))
+
+    def test_repository_tweets_search_without_external_dependencies(self):
+        namespace = load_retrieval()
+        context, urls = namespace["search_tweets"]("Chelsea", k=3)
+        self.assertGreater(len(context), 0)
+        self.assertLessEqual(len(context), 3)
+        self.assertEqual(len(context), len(urls))
+        for text, url in zip(context, urls):
+            self.assertIn("chelsea", text.casefold())
+            self.assertIn(url, text)
+            self.assertTrue(url.startswith("https://"))
 
 
 if __name__ == "__main__":

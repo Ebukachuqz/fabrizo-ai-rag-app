@@ -12,7 +12,7 @@ from lancedb.rerankers import RRFReranker
 from streamlit.testing.v1 import AppTest
 
 import init_lancedb
-from src import config, prompt, rag as rag_module, session, vectordb
+from src import config, prompt, rag as rag_module, retrieval, session, vectordb
 from src.langgraph_workflow import initialize_rag_workflow
 
 APP = Path(__file__).resolve().parents[1] / "app.py"
@@ -22,7 +22,7 @@ APP = Path(__file__).resolve().parents[1] / "app.py"
 def isolated_environment(monkeypatch):
     # Never use developer credentials or contact paid services in regression tests.
     for name in ("GROQ_API_KEY", "OPENAI_API_KEY", "DG_API_KEY", "GROQ_MODEL",
-                 "OPENAI_MODEL", "LANCEDB_PATH", "LANCEDB_TABLE"):
+                 "OPENAI_MODEL", "LANCEDB_PATH", "LANCEDB_TABLE", "RETRIEVAL_MODE"):
         monkeypatch.delenv(name, raising=False)
     st.cache_resource.clear()
 
@@ -72,7 +72,7 @@ def test_rag_propagates_original_exception(monkeypatch, stage):
     error = RuntimeError(f"Original {stage} failure")
     def fail(*args, **kwargs):
         raise error
-    monkeypatch.setattr(rag_module, "lancedb_hybrid_search", fail if stage == "retrieval" else lambda q: (["tweet"], ["url"]))
+    monkeypatch.setattr(rag_module, "search_tweets", fail if stage == "retrieval" else lambda q: (["tweet"], ["url"]))
     model = RecordingModel(error=error)
     with pytest.raises(RuntimeError) as caught:
         rag_module.rag("1", initialize_rag_workflow(model), "Chelsea?")
@@ -144,6 +144,7 @@ def database(monkeypatch, tmp_path):
     monkeypatch.setenv("LANCEDB_PATH", str(tmp_path / "lancedb"))
     monkeypatch.setenv("LANCEDB_TABLE", "test_tweets")
     monkeypatch.setattr(init_lancedb, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(retrieval, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(init_lancedb, "get_tweet_schema", lambda: Tweet)
     monkeypatch.setattr(vectordb, "get_reranker", lambda: RRFReranker())
     return init_lancedb.initialize_database()
@@ -171,6 +172,9 @@ def test_ui_opens_without_credentials_or_database(monkeypatch):
     assert app.title[0].value == "Fabrizio Romano Q&A AI Chatbot"
     app.chat_input[0].set_value("Hi there").run()
     assert not app.exception
+    assert not app.error
+    assert app.session_state["chat_history"][-1].content.startswith("Hi!")
+    app.chat_input[0].set_value("Chelsea").run()
     assert "GROQ_API_KEY" in app.error[0].value
 
 
@@ -194,7 +198,7 @@ def test_ui_shows_original_retrieval_error(database, monkeypatch):
     monkeypatch.setattr(session, "initialize_llm", lambda choice, key: RecordingModel())
     def fail(query):
         raise RuntimeError("Search index is unavailable")
-    monkeypatch.setattr(rag_module, "lancedb_hybrid_search", fail)
+    monkeypatch.setattr(rag_module, "search_tweets", fail)
     app = AppTest.from_file(str(APP)).run(timeout=30)
     app.chat_input[0].set_value("Chelsea").run(timeout=30)
     assert not app.exception

@@ -1,4 +1,4 @@
-streamlit==1.40.0
+streamlit==1.45.1
 # The app runs on CPU; avoid downloading CUDA libraries on Streamlit Cloud.
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.6.0+cpu
